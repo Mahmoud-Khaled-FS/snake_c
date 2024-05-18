@@ -9,21 +9,49 @@
 #define CELL_HEIGHT SCREEN_HEIGHT / GRID_SIZE
 #define IS_TEST false
 
+typedef enum State
+{
+  PLAYING = 1,
+  PAUSE = 2,
+  END = 3
+} State;
+
 typedef struct Apple
 {
   int x;
   int y;
   int size;
   Color color;
+  Texture2D texture;
 } Apple;
 
-typedef struct main
+typedef struct snake
 {
   Vector2 body[GRID_SIZE * GRID_SIZE];
   int size;
   Color color;
   Vector2 dir;
+  Texture2D headTexture[4];
 } Snake;
+typedef struct game
+{
+  Apple apple;
+  Snake snake;
+  int Score;
+  double lastUpdateTime;
+  char *scoreText;
+  State state;
+} Game;
+
+Game createGame()
+{
+  Game game = {
+      .Score = 0,
+      .state = PLAYING,
+  };
+  game.scoreText = malloc(10);
+  return game;
+}
 
 void renderGrid()
 {
@@ -43,23 +71,25 @@ void renderApple(Apple apple)
 {
   int x = apple.x * CELL_WIDTH + CELL_WIDTH / 2 - apple.size / 2;
   int y = apple.y * CELL_HEIGHT + CELL_HEIGHT / 2 - apple.size / 2;
-  DrawRectangle(x, y, apple.size, apple.size, apple.color);
+  // DrawRectangle(x, y, apple.size, apple.size, apple.color);
+  DrawTexture(apple.texture, x, y, WHITE);
 }
 
-Apple createApple(Snake snake)
+Apple createApple(Game *game)
 {
   Apple apple = {
-      .size = 20,
+      .size = 25,
       .color = RED,
+      .texture = game->apple.texture,
   };
   while (true)
   {
     apple.y = GetRandomValue(0, GRID_SIZE - 1);
     apple.x = GetRandomValue(0, GRID_SIZE - 1);
     bool isInSnake = false;
-    for (int i = 0; i < snake.size; i++)
+    for (int i = 0; i < game->snake.size; i++)
     {
-      if (apple.x == snake.body[i].x && apple.y == snake.body[i].y)
+      if (apple.x == game->snake.body[i].x && apple.y == game->snake.body[i].y)
       {
         isInSnake = true;
         break;
@@ -83,9 +113,25 @@ void renderSnake(Snake snake)
     Color color = snake.color;
     if (i == 0)
     {
-      color = YELLOW;
+      int headPath = 0;
+      if (snake.dir.y == 1)
+      {
+        headPath = 1;
+      }
+      if (snake.dir.x == -1)
+      {
+        headPath = 2;
+      }
+      if (snake.dir.x == 1)
+      {
+        headPath = 3;
+      }
+      DrawTexture(snake.headTexture[headPath], x, y, WHITE);
     }
-    DrawRectangle(x, y, CELL_WIDTH, CELL_HEIGHT, color);
+    else
+    {
+      DrawRectangle(x, y, CELL_WIDTH, CELL_HEIGHT, color);
+    }
   }
   return;
 }
@@ -94,7 +140,7 @@ Snake createSnake()
 {
   Snake snake;
   snake.size = 3;
-  snake.color = GREEN;
+  snake.color = (Color){91, 123, 249, 255};
   snake.body[0] = (Vector2){3, 1};
   snake.body[1] = (Vector2){2, 1};
   snake.body[2] = (Vector2){1, 1};
@@ -179,99 +225,96 @@ bool triggerEvent(double *lastUpdateTime, double interval)
 }
 
 // State
-const int PAUSE_STATE = 1;
-const int PLAYING_STATE = 2;
-const int END_STATE = 3;
+void resetGame(Game *game)
+{
+  game->snake = createSnake();
+  game->apple = createApple(game);
+  game->Score = 0;
+  game->state = PLAYING;
+}
 
-int state = PLAYING_STATE;
-double lastUpdateTime;
-Apple apple;
-Snake snake;
-int score;
-char *scoreText;
-
-void runGame()
+void runGame(Game *game)
 {
   switch (GetKeyPressed())
   {
   case KEY_UP:
   case KEY_W:
   {
-    if (snake.dir.y == 1)
+    if (game->snake.dir.y == 1)
     {
       break;
     }
-    snake.dir = (Vector2){0, -1};
+    game->snake.dir = (Vector2){0, -1};
   }
   break;
   case KEY_DOWN:
   case KEY_S:
   {
-    if (snake.dir.y == -1)
+    if (game->snake.dir.y == -1)
     {
       break;
     }
-    snake.dir = (Vector2){0, 1};
+    game->snake.dir = (Vector2){0, 1};
   }
   break;
   case KEY_LEFT:
   case KEY_A:
   {
-    if (snake.dir.x == 1)
+    if (game->snake.dir.x == 1)
     {
       break;
     }
-    snake.dir = (Vector2){-1, 0};
+    game->snake.dir = (Vector2){-1, 0};
   }
   break;
   case KEY_RIGHT:
   case KEY_D:
   {
-    if (snake.dir.x == -1)
+    if (game->snake.dir.x == -1)
     {
       break;
     }
-    snake.dir = (Vector2){1, 0};
+    game->snake.dir = (Vector2){1, 0};
   }
   break;
   case KEY_SPACE:
   {
-    state = PAUSE_STATE;
+    game->state = PAUSE;
   }
   break;
   }
 
-  if (triggerEvent(&lastUpdateTime, 0.1))
+  if (triggerEvent(&game->lastUpdateTime, 0.1))
   {
-    updateSnake(&snake);
+    updateSnake(&game->snake);
   }
 
-  if (isEating(snake, apple))
+  if (isEating(game->snake, game->apple))
   {
-    score++;
-    growSnake(&snake);
-    apple = createApple(snake);
+    game->Score++;
+    growSnake(&game->snake);
+    game->apple = createApple(game);
   }
-  if (checkCollision(snake))
+  if (checkCollision(game->snake))
   {
-    state = END_STATE;
+    game->state = END;
   }
 
   BeginDrawing();
   ClearBackground((Color){0, 0, 0, 1});
   renderGrid();
-  renderApple(apple);
-  renderSnake(snake);
+  renderApple(game->apple);
+  renderSnake(game->snake);
   EndDrawing();
 }
 
-void pauseGame()
+void pauseGame(Game *game)
 {
   switch (GetKeyPressed())
   {
   case KEY_SPACE:
   {
-    state = PLAYING_STATE;
+    game->state = PLAYING;
   }
   break;
   }
@@ -279,8 +322,8 @@ void pauseGame()
   BeginDrawing();
   ClearBackground((Color){0, 0, 0, 1});
   renderGrid();
-  renderApple(apple);
-  renderSnake(snake);
+  renderApple(game->apple);
+  renderSnake(game->snake);
 
   char *pauseTitle = "Paused";
   int titleSize = 50;
@@ -294,16 +337,13 @@ void pauseGame()
   EndDrawing();
 }
 
-void endGame()
+void endGame(Game *game)
 {
   switch (GetKeyPressed())
   {
   case KEY_SPACE:
   {
-    snake = createSnake();
-    apple = createApple(snake);
-    score = 0;
-    state = PLAYING_STATE;
+    resetGame(game);
   }
   break;
   }
@@ -319,37 +359,55 @@ void endGame()
   int textSize = 25;
   int textWidth = MeasureText(pauseText, textSize);
 
-  sprintf(scoreText, "Score: %d", score);
+  sprintf(game->scoreText, "Score: %d", game->Score);
   int scoreSize = 25;
-  int scoreWidth = MeasureText(scoreText, textSize);
+  int scoreWidth = MeasureText(game->scoreText, textSize);
   DrawText(gameOverText, (SCREEN_WIDTH / 2) - titleWidth / 2, (SCREEN_HEIGHT / 3), titleSize, WHITE);
   DrawText(pauseText, (SCREEN_WIDTH / 2) - textWidth / 2, (SCREEN_HEIGHT / 3) + 60, textSize, WHITE);
-  DrawText(scoreText, (SCREEN_WIDTH / 2) - scoreWidth / 2, (SCREEN_HEIGHT / 3) + 100, textSize, GREEN);
+  DrawText(game->scoreText, (SCREEN_WIDTH / 2) - scoreWidth / 2, (SCREEN_HEIGHT / 3) + 100, textSize, GREEN);
 
   EndDrawing();
+}
+
+Texture2D getTextureFromAssets(char *filePath)
+{
+  Image image = LoadImage(filePath);
+  if (image.format == 0)
+  {
+    printf("ERROR: Can not load %s\n", filePath);
+    exit(1);
+  }
+  ImageResize(&image, CELL_WIDTH, CELL_HEIGHT);
+  Texture2D texture = LoadTextureFromImage(image);
+  UnloadImage(image);
+  return texture;
 }
 
 int main()
 {
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Snake_c");
   SetTargetFPS(60);
-
-  snake = createSnake();
-  apple = createApple(snake);
-  scoreText = malloc(10);
+  Game game = createGame();
+  game.snake = createSnake();
+  game.snake.headTexture[0] = getTextureFromAssets("./assets/head_up.png");
+  game.snake.headTexture[1] = getTextureFromAssets("./assets/head_down.png");
+  game.snake.headTexture[2] = getTextureFromAssets("./assets/head_left.png");
+  game.snake.headTexture[3] = getTextureFromAssets("./assets/head_right.png");
+  game.apple = createApple(&game);
+  game.apple.texture = getTextureFromAssets("./asstes/apple.png");
   while (!WindowShouldClose())
   {
-    if (state == PLAYING_STATE)
+    if (game.state == PLAYING)
     {
-      runGame();
+      runGame(&game);
     }
-    else if (state == PAUSE_STATE)
+    else if (game.state == PAUSE)
     {
-      pauseGame();
+      pauseGame(&game);
     }
-    else if (state == END_STATE)
+    else if (game.state == END)
     {
-      endGame();
+      endGame(&game);
     }
   }
 
