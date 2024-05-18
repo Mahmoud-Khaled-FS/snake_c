@@ -394,7 +394,7 @@ int main()
   game.snake.headTexture[2] = getTextureFromAssets("./assets/head_left.png");
   game.snake.headTexture[3] = getTextureFromAssets("./assets/head_right.png");
   game.apple = createApple(&game);
-  game.apple.texture = getTextureFromAssets("./asstes/apple.png");
+  game.apple.texture = getTextureFromAssets("./assets/apple.png");
   while (!WindowShouldClose())
   {
     if (game.state == PLAYING)
