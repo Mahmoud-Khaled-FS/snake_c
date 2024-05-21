@@ -31,7 +31,6 @@ typedef struct snake
   int size;
   Color color;
   Vector2 dir;
-  Texture2D headTexture[4];
 } Snake;
 typedef struct game
 {
@@ -51,6 +50,33 @@ Game createGame()
   };
   game.scoreText = malloc(10);
   return game;
+}
+
+const Vector2 leftDir = {-1, 0};
+const Vector2 rightDir = {1, 0};
+const Vector2 upDir = {0, -1};
+const Vector2 downDir = {0, 1};
+
+Texture2D snakeHeadDown;
+Texture2D snakeHeadUp;
+Texture2D snakeHeadLeft;
+Texture2D snakeHeadRight;
+
+Texture2D getSnakeTexture(Vector2 dir)
+{
+  if (dir.x == leftDir.x)
+  {
+    return snakeHeadLeft;
+  }
+  if (dir.x == rightDir.x)
+  {
+    return snakeHeadRight;
+  }
+  if (dir.y == downDir.y)
+  {
+    return snakeHeadDown;
+  }
+  return snakeHeadUp;
 }
 
 void renderGrid()
@@ -113,20 +139,7 @@ void renderSnake(Snake snake)
     Color color = snake.color;
     if (i == 0)
     {
-      int headPath = 0;
-      if (snake.dir.y == 1)
-      {
-        headPath = 1;
-      }
-      if (snake.dir.x == -1)
-      {
-        headPath = 2;
-      }
-      if (snake.dir.x == 1)
-      {
-        headPath = 3;
-      }
-      DrawTexture(snake.headTexture[headPath], x, y, WHITE);
+      DrawTexture(getSnakeTexture(snake.dir), x, y, WHITE);
     }
     else
     {
@@ -244,7 +257,7 @@ void runGame(Game *game)
     {
       break;
     }
-    game->snake.dir = (Vector2){0, -1};
+    game->snake.dir = upDir;
   }
   break;
   case KEY_DOWN:
@@ -254,7 +267,7 @@ void runGame(Game *game)
     {
       break;
     }
-    game->snake.dir = (Vector2){0, 1};
+    game->snake.dir = downDir;
   }
   break;
   case KEY_LEFT:
@@ -264,7 +277,7 @@ void runGame(Game *game)
     {
       break;
     }
-    game->snake.dir = (Vector2){-1, 0};
+    game->snake.dir = leftDir;
   }
   break;
   case KEY_RIGHT:
@@ -274,7 +287,7 @@ void runGame(Game *game)
     {
       break;
     }
-    game->snake.dir = (Vector2){1, 0};
+    game->snake.dir = rightDir;
   }
   break;
   case KEY_SPACE:
@@ -389,10 +402,10 @@ int main()
   SetTargetFPS(60);
   Game game = createGame();
   game.snake = createSnake();
-  game.snake.headTexture[0] = getTextureFromAssets("./assets/head_up.png");
-  game.snake.headTexture[1] = getTextureFromAssets("./assets/head_down.png");
-  game.snake.headTexture[2] = getTextureFromAssets("./assets/head_left.png");
-  game.snake.headTexture[3] = getTextureFromAssets("./assets/head_right.png");
+  snakeHeadUp = getTextureFromAssets("./assets/head_up.png");
+  snakeHeadDown = getTextureFromAssets("./assets/head_down.png");
+  snakeHeadLeft = getTextureFromAssets("./assets/head_left.png");
+  snakeHeadRight = getTextureFromAssets("./assets/head_right.png");
   game.apple = createApple(&game);
   game.apple.texture = getTextureFromAssets("./assets/apple.png");
   while (!WindowShouldClose())
